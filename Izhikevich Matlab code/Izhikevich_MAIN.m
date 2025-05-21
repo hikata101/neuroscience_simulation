@@ -32,6 +32,32 @@ A(A<frac_delete)=0;
 A(A>0)=1;
 A = A - diag(diag(A)); % Make the diagonal elements 0 (no self-connection).
 
+% neuron i send connection to j
+motif_3b = [0 1 1;
+            1 0 1;
+            0 0 0];
+motif = motif_3b;
+m = size(motif,1);
+
+list_neurons = 1:Ne+Ni;
+% Shuffle the list of neurons for random selection without removing
+list_neurons = list_neurons(randperm(Ne+Ni));
+
+% Calculate max_steps based on the motif size
+max_steps = floor(numel(list_neurons) / m);
+% Main loop for motif assignment
+for step = 1:max_steps
+    % Select the first `motif.shape[0]` random neurons
+    sel = list_neurons(1:m);
+    % Give the new values to the neurons following the motif structure
+    for i = 1:m
+        for j = 1:m
+            A(sel(i), sel(j)) = motif(i, j);
+        end
+    end
+    % Remove the used neurons (move to the next set of neurons)
+    list_neurons(1:m) = [];
+end
 
 figure;
 imagesc(A);
