@@ -109,3 +109,29 @@ for motif in all_motifs:
         # Remove the used neurons (move to the next set of neurons)
         list_neurons = list_neurons[motif.shape[0]:]
     print(A==firstA)
+print('')
+
+### combinations of multiple motifs
+# list of motifs and the corresponding percent (total sum must be 1 or less)
+combination_motifs = [motif_3a, motif_4a, motif_5a]
+percent_motifs = [0.3,0.3,0.4]
+Nt = Ne + Ni
+list_neurons = list(range(0,Nt,1))
+# Shuffle the list of neurons for random selection without removing
+random.shuffle(list_neurons)
+steps_each_motif = [int(x * Nt) for x in percent_motifs]
+for i in range(len(combination_motifs)):
+    motif = combination_motifs[i]
+    # Calculate max_steps based on the motif size
+    max_steps = steps_each_motif[i] // motif.shape[0]
+    # Main loop for motif assignment
+    for _ in range(max_steps):
+        # Select the first `motif.shape[0]` random neurons
+        selected_neurons = list_neurons[:motif.shape[0]]
+        # Give the new values to the neurons following the motif structure
+        for i in range(motif.shape[0]):
+            for j in range(motif.shape[1]):
+                A[selected_neurons[i], selected_neurons[j]] = motif[i, j]
+        # Remove the used neurons (move to the next set of neurons)
+        list_neurons = list_neurons[motif.shape[0]:]
+print(A==firstA)
