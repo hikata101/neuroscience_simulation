@@ -91,6 +91,12 @@ all_motifs = [motif_3a, motif_3b, motif_3c, motif_3d,
               motif_4a, motif_4b, motif_4c, motif_4d, motif_4e, motif_4f,
               motif_5a, motif_5b, motif_5c, motif_5d, motif_5e]
 
+all_motifs_names = [
+    "motif_3a", "motif_3b", "motif_3c", "motif_3d",
+    "motif_4a", "motif_4b", "motif_4c", "motif_4d", "motif_4e", "motif_4f",
+    "motif_5a", "motif_5b", "motif_5c", "motif_5d", "motif_5e"
+]
+
 for motif in all_motifs:
     Nt = Ne + Ni
     list_neurons = list(range(0,Nt,1))
