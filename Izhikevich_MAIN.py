@@ -6,117 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 np.random.seed(2025)
 
-# SET UP THE NETWORK
-# 1 - NETWORK SIZE:
-Ne = 800  # Number of excitatory neurons
-Ni = 200  # Number of inhibitory neurons
-SIM_TIME = 3000  # Simulation time
-
-# 2 - GLOBAL PARAMETERS THAT SET OUR NEURON MODEL. DEFAULT IS SPIKING NEURON:
-# Set initial conditions of neurons, with some variability
-re = np.random.rand(Ne)  # Random values for excitatory neurons
-ri = np.random.rand(Ni)  # Random values for inhibitory neurons
-# Model parameters
-a = np.concatenate((0.02 * np.ones(Ne), 0.02 + 0.08 * ri))
-b = np.concatenate((0.2 * np.ones(Ne), 0.25 - 0.05 * ri))
-c = np.concatenate((-65 + 15 * re ** 2, -65 * np.ones(Ni)))
-d = np.concatenate((8 - 6 * re ** 2, 2 * np.ones(Ni)))
-
-# 3 - SET UP THE CONNECTIVITY MATRIX: DIRECTED NETWORK
-# In this construction, 1 = connection exists, 0 = no connection.
-# Connectivity is set as random. Then, a fraction of connections are set to 0.
-
-frac_delete = 0.8  # Fraction of connections to delete (set to 0)
-# Create a random (Ne+Ni) x (Ne+Ni) connectivity matrix
-A = np.random.rand(Ne + Ni, Ne + Ni)
-# Set a fraction of connections to 0
-A[A < frac_delete] = 0
-A[A > 0] = 1
-# Remove self-connections by zeroing the diagonal
-np.fill_diagonal(A, 0)
-firstA = np.copy(A)
-
-# 4 - SET SYNAPTIC WEIGHTS (STRENGTHS) OF CONNECTIONS
-# EPSC (excitatory) and IPSC (inhibitory) amplitudes
-MAX_EXC_WEIGHT = 4     # Max weight for excitatory synapses
-MAX_INH_WEIGHT = 0.5   # Max weight for inhibitory synapses
-# W is a matrix where the first Ne columns are excitatory weights (positive),
-# and the next Ni columns are inhibitory weights (negative)
-W_exc = MAX_EXC_WEIGHT * np.random.rand(Ne + Ni, Ne)
-W_inh = -MAX_INH_WEIGHT * np.random.rand(Ne + Ni, Ni)
-W = np.hstack((W_exc, W_inh))
-
-# 5 - Final connectivity matrix S is element-wise product of A and W
-S = A * W  # Element-wise multiplication: directed, weighted connectivity
-
-# 6 - DEFINE NOISE STRENGTH
-NOISE_MAX = 3  # Strength of background noise
-
-# MAIN SIMULATION
-def main_simulation(A,SIM_TIME,name_motif):
-    """Function that runs the simulation with original A"""
-    # Plot the connectivity matrix
-    plt.figure(figsize=(6, 6))
-    plt.imshow(A, cmap='gray_r', aspect='equal')  # Binary matrix: 1s are connections
-    plt.xlim([0, 1000])
-    plt.ylim([0, 1000])
-    plt.xlabel('Neuron')
-    plt.ylabel('Neuron')
-    plt.title('Connectivity matrix')
-    plt.tight_layout()
-    plt.savefig("Motif_figures/conn_matrix_"+name_motif+".png")
-
-    v = -65 * np.ones(Ne + Ni)        # Initial membrane potential
-    u = b * v                         # Initial recovery variable
-    firings = []                      # List to store spike timings
-
-    for t in range(1, SIM_TIME + 1):  # Simulation from t=1 to t=SIM_TIME
-        I = np.concatenate((NOISE_MAX * np.random.randn(Ne),
-                            2 * np.random.randn(Ni)))  # Random input (noise)
-
-        fired = np.where(v >= 30)[0]  # Indices of neurons that fired
-        if fired.size > 0:
-            firings.extend([(t, neuron) for neuron in fired])
-            v[fired] = c[fired]
-            u[fired] += d[fired]
-            I += np.sum(S[:, fired], axis=1)  # Input from fired neurons
-
-        # Numerical integration with 0.5 ms time step (two half steps)
-        v += 0.5 * (0.04 * v**2 + 5 * v + 140 - u + I)
-        v += 0.5 * (0.04 * v**2 + 5 * v + 140 - u + I)
-        u += a * (b * v - u)
-
-    # PLOT RESULTS (Raster Plot)
-
-    firings_np = np.array(firings)  # Convert to NumPy array for plotting
-
-    plt.figure(figsize=(10, 6))
-    plt.scatter(firings_np[:, 0], firings_np[:, 1], s=7, c='black', marker='.')
-    plt.xlabel('Time (ms)')
-    plt.ylabel('Neuron Index')
-    plt.title('Raster plot of activity')
-    plt.savefig("Motif_figures/raster_plot_"+name_motif+".png")
-    plt.close('all')
-    # SYNC ANALYSIS
-
-    # SIM_TIME = 1000
-    # WINDOW = 100
-    # num_active = np.zeros(10)
-    # firings_np = np.array(firings)  # Use previously collected spikes
-
-    # for j in range(1, 11):
-    #     start_time = WINDOW * (j - 1)
-    #     end_time = WINDOW * j
-    #     # Select spikes in the current time window
-    #     mask = (firings_np[:, 0] >= start_time) & (firings_np[:, 0] < end_time)
-    #     neurons_fired = firings_np[mask][:, 1]
-    #     num_active[j - 1] = len(np.unique(neurons_fired)) / (Ne + Ni)
-
-    # sync = np.max(num_active)
-    # print("Synchronization measure (max fraction of active neurons per window):", sync)
-
-# main_simulation(firstA,SIM_TIME)
-
 # neuron i send connection to j
 #matrix 3
 # 1
@@ -199,13 +88,145 @@ all_motifs_names = [
     "motif_5a", "motif_5b", "motif_5c", "motif_5d", "motif_5e"
 ]
 
-def simulation_all_motifs(all_motifs,all_motifs_names,A):
+# SET UP THE NETWORK
+# 1 - NETWORK SIZE:
+Ne = 800  # Number of excitatory neurons
+Ni = 200  # Number of inhibitory neurons
+SIM_TIME = 3000  # Simulation time
+
+# 2 - GLOBAL PARAMETERS THAT SET OUR NEURON MODEL. DEFAULT IS SPIKING NEURON:
+# Set initial conditions of neurons, with some variability
+re = np.random.rand(Ne)  # Random values for excitatory neurons
+ri = np.random.rand(Ni)  # Random values for inhibitory neurons
+# Model parameters
+a = np.concatenate((0.02 * np.ones(Ne), 0.02 + 0.08 * ri))
+b = np.concatenate((0.2 * np.ones(Ne), 0.25 - 0.05 * ri))
+c = np.concatenate((-65 + 15 * re ** 2, -65 * np.ones(Ni)))
+d = np.concatenate((8 - 6 * re ** 2, 2 * np.ones(Ni)))
+
+# 3 - SET UP THE CONNECTIVITY MATRIX: DIRECTED NETWORK
+# In this construction, 1 = connection exists, 0 = no connection.
+# Connectivity is set as random. Then, a fraction of connections are set to 0.
+
+frac_delete = 0.8  # Fraction of connections to delete (set to 0)
+# Create a random (Ne+Ni) x (Ne+Ni) connectivity matrix
+A = np.random.rand(Ne + Ni, Ne + Ni)
+# Set a fraction of connections to 0
+A[A < frac_delete] = 0
+A[A > 0] = 1
+# Remove self-connections by zeroing the diagonal
+np.fill_diagonal(A, 0)
+firstA = np.copy(A)
+
+# 4 - SET SYNAPTIC WEIGHTS (STRENGTHS) OF CONNECTIONS
+# EPSC (excitatory) and IPSC (inhibitory) amplitudes
+MAX_EXC_WEIGHT = 4     # Max weight for excitatory synapses
+MAX_INH_WEIGHT = 0.5   # Max weight for inhibitory synapses
+# W is a matrix where the first Ne columns are excitatory weights (positive),
+# and the next Ni columns are inhibitory weights (negative)
+W_exc = MAX_EXC_WEIGHT * np.random.rand(Ne + Ni, Ne)
+W_inh = -MAX_INH_WEIGHT * np.random.rand(Ne + Ni, Ni)
+W = np.hstack((W_exc, W_inh))
+
+# 5 - Final connectivity matrix S is element-wise product of A and W
+S = A * W  # Element-wise multiplication: directed, weighted connectivity
+
+# 6 - DEFINE NOISE STRENGTH
+NOISE_MAX = 3  # Strength of background noise
+
+# MAIN SIMULATION
+def main_simulation(A,SIM_TIME,name_motif):
+    """Function that runs the simulation with original A"""
+    # Plot the connectivity matrix
+    # plt.figure(figsize=(6, 6))
+    # plt.imshow(A, cmap='gray_r', aspect='equal')  # Binary matrix: 1s are connections
+    # plt.xlim([0, 1000])
+    # plt.ylim([0, 1000])
+    # plt.xlabel('Neuron')
+    # plt.ylabel('Neuron')
+    # plt.title('Connectivity matrix')
+    # plt.tight_layout()
+    # plt.savefig("Motif_figures/conn_matrix_"+name_motif+".png")
+
+    S = A*W
+
+    v = -65 * np.ones(Ne + Ni)        # Initial membrane potential
+    u = b * v                         # Initial recovery variable
+    firings = []                      # List to store spike timings
+
+    for t in range(1, SIM_TIME + 1):  # Simulation from t=1 to t=SIM_TIME
+        I = np.concatenate((NOISE_MAX * np.random.randn(Ne),
+                            2 * np.random.randn(Ni)))  # Random input (noise)
+
+        fired = np.where(v >= 30)[0]  # Indices of neurons that fired
+        if fired.size > 0:
+            firings.extend([(t, neuron) for neuron in fired])
+            v[fired] = c[fired]
+            u[fired] += d[fired]
+            I += np.sum(S[:, fired], axis=1)  # Input from fired neurons
+
+        # Numerical integration with 0.5 ms time step (two half steps)
+        v += 0.5 * (0.04 * v**2 + 5 * v + 140 - u + I)
+        v += 0.5 * (0.04 * v**2 + 5 * v + 140 - u + I)
+        u += a * (b * v - u)
+
+    # PLOT RESULTS (Raster Plot)
+
+    firings_np = np.array(firings)  # Convert to NumPy array for plotting
+
+    unique_elements, counts = np.unique(firings_np[:, 0], return_counts=True)
+    # Display results
+    # for elem, count in zip(unique_elements, counts):
+    #     print(f"{elem} appears {count} times")
+
+    # Target value
+    target = 900
+    # Create a boolean array where True means value equals target
+    is_target = counts >= target
+    # Find where the value changes (by checking the difference)
+    diff = np.diff(is_target.astype(int))
+    # Count where a new group starts: when diff == 1
+    starts = np.where(diff == 1)[0]
+    # If the first element is the target, count it as a group start
+    num_groups = len(starts) + (is_target[0] == True)
+    print(f"Number of syncronize activity: {num_groups}")
+
+    plt.figure(figsize=(10, 6))
+    plt.scatter(firings_np[:, 0], firings_np[:, 1], s=7, c='black', marker='.')
+    plt.xlabel('Time (ms)')
+    plt.ylabel('Neuron Index')
+    plt.title('Raster plot of activity')
+    plt.savefig("Motif_figures/raster_plot_"+name_motif+".png")
+    plt.close('all')
+    # SYNC ANALYSIS
+
+    # SIM_TIME = 1000
+    # WINDOW = 100
+    # num_active = np.zeros(10)
+    # firings_np = np.array(firings)  # Use previously collected spikes
+
+    # for j in range(1, 11):
+    #     start_time = WINDOW * (j - 1)
+    #     end_time = WINDOW * j
+    #     # Select spikes in the current time window
+    #     mask = (firings_np[:, 0] >= start_time) & (firings_np[:, 0] < end_time)
+    #     neurons_fired = firings_np[mask][:, 1]
+    #     num_active[j - 1] = len(np.unique(neurons_fired)) / (Ne + Ni)
+
+    # sync = np.max(num_active)
+    # print("Synchronization measure (max fraction of active neurons per window):", sync)
+
+main_simulation(A,SIM_TIME,"original")
+
+def simulation_all_motifs(all_motifs,all_motifs_names,firstA):
     """Function that runs simulations of all motifs"""
     for m in range(len(all_motifs)):
         motif = all_motifs[m]
         name_motif  = all_motifs_names[m]
-        new_A = np.copy(A)
         print(name_motif)
+        newA = np.ones(firstA.shape)*2
+        np.fill_diagonal(newA, 0)
+        nlinks = np.count_nonzero(firstA == 1)
         Nt = Ne + Ni
         neurons = np.arange(Nt)
         # Shuffle the list of neurons for random selection without removing
@@ -216,32 +237,53 @@ def simulation_all_motifs(all_motifs,all_motifs_names,A):
         for step in range(max_steps):
             selected = neurons[step * motif_size : (step + 1) * motif_size]
             # Assign motif block to submatrix of new_A
-            new_A[np.ix_(selected, selected)] = motif
-        main_simulation(new_A,SIM_TIME,name_motif)
-simulation_all_motifs(all_motifs,all_motifs_names,A)
-print('')
+            newA[np.ix_(selected, selected)] = motif
+        nlinks_after_motifs = np.count_nonzero(newA == 1)
+        # print("before",nlinks_after_motifs)
+        # Find all positions where value is 2
+        positions = np.argwhere(newA == 2)
+        # Convert to list of tuples for easy removal
+        positions_list = [tuple(pos) for pos in positions]
+        # Randomly choose one position
+        num_to_change = nlinks - nlinks_after_motifs
+        # Shuffle once
+        np.random.shuffle(positions_list)
+        # Select positions to change
+        chosen_positions = positions_list[:num_to_change]
+        # Update matrix
+        for pos in chosen_positions:
+            newA[pos] = 1
+        newA[newA==2] = 0
+        # print("after",np.count_nonzero(newA == 1))
+        main_simulation(newA,SIM_TIME,name_motif)
+simulation_all_motifs(all_motifs,all_motifs_names,firstA)
+
+# motifs3 = [motif_3c, motif_4a]
+# motifs3_names = ["motif_3c", "motif_4a"]
+# simulation_all_motifs(motifs3,motifs3_names,firstA)
+
 ### combinations of multiple motifs
 # list of motifs and the corresponding percent (total sum must be 1 or less)
-combination_motifs = [motif_3a, motif_4a, motif_5a]
-combination_motifs_names = ["motif_3a", "motif_4a", "motif_5a"]
-percent_motifs = [0.3,0.3,0.4]
-name_combination = ""
-for n in range(len(combination_motifs)):
-    name_combination += str(percent_motifs[n])+combination_motifs_names[n]+"_"
-comb_A = np.copy(A)
-print(name_combination)
-Nt = Ne + Ni
-list_neurons = np.arange(Nt)
-# Shuffle the list of neurons for random selection without removing
-np.random.shuffle(list_neurons)
-steps_each_motif = [int(x * Nt) for x in percent_motifs]
-idx = 0
-for motif, steps in zip(combination_motifs, steps_each_motif):
-    motif_size = motif.shape[0]
-    max_steps = steps // motif_size
+# combination_motifs = [motif_3a, motif_4a, motif_5a]
+# combination_motifs_names = ["motif_3a", "motif_4a", "motif_5a"]
+# percent_motifs = [0.3,0.3,0.4]
+# name_combination = ""
+# for n in range(len(combination_motifs)):
+#     name_combination += str(percent_motifs[n])+combination_motifs_names[n]+"_"
+# comb_A = np.copy(A)
+# print(name_combination)
+# Nt = Ne + Ni
+# list_neurons = np.arange(Nt)
+# # Shuffle the list of neurons for random selection without removing
+# np.random.shuffle(list_neurons)
+# steps_each_motif = [int(x * Nt) for x in percent_motifs]
+# idx = 0
+# for motif, steps in zip(combination_motifs, steps_each_motif):
+#     motif_size = motif.shape[0]
+#     max_steps = steps // motif_size
     
-    for _ in range(max_steps):
-        selected = list_neurons[idx : idx + motif_size]
-        comb_A[np.ix_(selected, selected)] = motif
-        idx += motif_size
-main_simulation(comb_A,SIM_TIME,name_combination)
+#     for _ in range(max_steps):
+#         selected = list_neurons[idx : idx + motif_size]
+#         comb_A[np.ix_(selected, selected)] = motif
+#         idx += motif_size
+# main_simulation(comb_A,SIM_TIME,name_combination)
