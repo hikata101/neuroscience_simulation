@@ -135,7 +135,7 @@ S = A * W  # Element-wise multiplication: directed, weighted connectivity
 NOISE_MAX = 3  # Strength of background noise
 
 # MAIN SIMULATION
-def main_simulation(A,SIM_TIME,name_motif):
+def main_simulation(A,SIM_TIME,name_motif,NOISE_MAX):
     """Function that runs the simulation with original A"""
     # Plot the connectivity matrix
     # plt.figure(figsize=(6, 6))
@@ -149,7 +149,6 @@ def main_simulation(A,SIM_TIME,name_motif):
     # plt.savefig("Motif_figures/conn_matrix_"+name_motif+".png")
 
     S = A*W
-
     v = -65 * np.ones(Ne + Ni)        # Initial membrane potential
     u = b * v                         # Initial recovery variable
     firings = []                      # List to store spike timings
@@ -188,23 +187,21 @@ def main_simulation(A,SIM_TIME,name_motif):
     # Count where a new group starts: when diff == 1
     starts = np.where(diff == 1)[0]
     # If the first element is the target, count it as a group start
-    num_groups = len(starts) + (is_target[0] == True)
-    print(f"Number of syncronize activity: {num_groups}")
+    num_lines = len(starts) + (is_target[0] == True)
+    # print(f"Number of syncronize activity: {num_lines}")
+    # plt.figure(figsize=(10, 6))
+    # plt.scatter(firings_np[:, 0], firings_np[:, 1], s=7, c='black', marker='.')
+    # plt.xlabel('Time (ms)')
+    # plt.ylabel('Neuron Index')
+    # plt.title('Raster plot of activity')
+    # plt.savefig("Motif_figures/raster_plot_"+name_motif+".png")
+    # plt.close('all')
 
-    plt.figure(figsize=(10, 6))
-    plt.scatter(firings_np[:, 0], firings_np[:, 1], s=7, c='black', marker='.')
-    plt.xlabel('Time (ms)')
-    plt.ylabel('Neuron Index')
-    plt.title('Raster plot of activity')
-    plt.savefig("Motif_figures/raster_plot_"+name_motif+".png")
-    plt.close('all')
     # SYNC ANALYSIS
-
     # SIM_TIME = 1000
     # WINDOW = 100
     # num_active = np.zeros(10)
     # firings_np = np.array(firings)  # Use previously collected spikes
-
     # for j in range(1, 11):
     #     start_time = WINDOW * (j - 1)
     #     end_time = WINDOW * j
@@ -212,14 +209,15 @@ def main_simulation(A,SIM_TIME,name_motif):
     #     mask = (firings_np[:, 0] >= start_time) & (firings_np[:, 0] < end_time)
     #     neurons_fired = firings_np[mask][:, 1]
     #     num_active[j - 1] = len(np.unique(neurons_fired)) / (Ne + Ni)
-
     # sync = np.max(num_active)
     # print("Synchronization measure (max fraction of active neurons per window):", sync)
+    return num_lines
 
-main_simulation(A,SIM_TIME,"original")
+# main_simulation(A,SIM_TIME,"original",NOISE_MAX)
 
-def simulation_all_motifs(all_motifs,all_motifs_names,firstA):
+def simulation_all_motifs(all_motifs,all_motifs_names,firstA,NOISE_MAX):
     """Function that runs simulations of all motifs"""
+    num_lines_each_motif = np.zeros(len(all_motifs))
     for m in range(len(all_motifs)):
         motif = all_motifs[m]
         name_motif  = all_motifs_names[m]
@@ -255,12 +253,35 @@ def simulation_all_motifs(all_motifs,all_motifs_names,firstA):
             newA[pos] = 1
         newA[newA==2] = 0
         # print("after",np.count_nonzero(newA == 1))
-        main_simulation(newA,SIM_TIME,name_motif)
-simulation_all_motifs(all_motifs,all_motifs_names,firstA)
+        num_lines_each_motif[m] = main_simulation(newA,SIM_TIME,name_motif,NOISE_MAX)
+    return num_lines_each_motif
+# simulation_all_motifs(all_motifs,all_motifs_names,firstA)
+
+def heatmap_noise_variation(all_motifs,all_motifs_names,firstA,min_noise,max_noise,d_noise = 5):
+    """Function that does the heatmap"""
+    noise_values = np.linspace(min_noise, max_noise, d_noise)
+    num_lines_all = np.zeros((len(all_motifs),d_noise))
+    for n in np.arange(noise_values.shape[0]):
+        print("noise_value=",noise_values[n])
+        num_lines_all[:,n] = simulation_all_motifs(all_motifs,all_motifs_names,firstA,noise_values[n])
+    plt.figure(figsize=(10, 2))
+    plt.imshow(num_lines_all, cmap='viridis', aspect='auto')
+    plt.xticks(ticks=np.arange(num_lines_all.shape[1]), labels=noise_values)
+    plt.yticks(ticks=np.arange(num_lines_all.shape[0]), labels=all_motifs_names)
+    for i in range(num_lines_all.shape[0]):
+        for j in range(num_lines_all.shape[1]):
+            plt.text(j, i, f"{num_lines_all[i, j]:.1f}", ha='center', va='center', color='white' if num_lines_all[i, j] > num_lines_all.max()/2 else 'black')
+    plt.colorbar(label='# lines')
+    plt.title('Num.lines for values of noise')
+    plt.xlabel('NOISE_MAX')
+    plt.tight_layout()
+    plt.savefig("Motif_figures/heatmap_lines.png")
+    plt.close('all')
 
 # motifs3 = [motif_3c, motif_4a]
 # motifs3_names = ["motif_3c", "motif_4a"]
-# simulation_all_motifs(motifs3,motifs3_names,firstA)
+# heatmap_noise_variation(motifs3,motifs3_names,firstA,2.9,3)
+heatmap_noise_variation(all_motifs,all_motifs_names,firstA,2.9,3)
 
 ### combinations of multiple motifs
 # list of motifs and the corresponding percent (total sum must be 1 or less)
