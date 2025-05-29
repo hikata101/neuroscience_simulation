@@ -78,16 +78,6 @@ motif_5e = np.array([[0, 0, 0, 0, 0],
                     [1, 0, 1, 0, 1],
                     [0, 0, 1, 1, 0]])
 
-all_motifs = [motif_3a, motif_3b, motif_3c, motif_3d,
-              motif_4a, motif_4b, motif_4c, motif_4d, motif_4e, motif_4f,
-              motif_5a, motif_5b, motif_5c, motif_5d, motif_5e]
-
-all_motifs_names = [
-    "motif_3a", "motif_3b", "motif_3c", "motif_3d",
-    "motif_4a", "motif_4b", "motif_4c", "motif_4d", "motif_4e", "motif_4f",
-    "motif_5a", "motif_5b", "motif_5c", "motif_5d", "motif_5e"
-]
-
 # SET UP THE NETWORK
 # 1 - NETWORK SIZE:
 Ne = 800  # Number of excitatory neurons
@@ -133,6 +123,16 @@ S = A * W  # Element-wise multiplication: directed, weighted connectivity
 
 # 6 - DEFINE NOISE STRENGTH
 NOISE_MAX = 3  # Strength of background noise
+
+all_motifs = [motif_3a, motif_3b, motif_3c, motif_3d,
+              motif_4a, motif_4b, motif_4c, motif_4d, motif_4e, motif_4f,
+              motif_5a, motif_5b, motif_5c, motif_5d, motif_5e, A]
+
+all_motifs_names = [
+    "motif_3a", "motif_3b", "motif_3c", "motif_3d",
+    "motif_4a", "motif_4b", "motif_4c", "motif_4d", "motif_4e", "motif_4f",
+    "motif_5a", "motif_5b", "motif_5c", "motif_5d", "motif_5e", "random"
+]
 
 # MAIN SIMULATION
 def main_simulation(A,SIM_TIME,name_motif,NOISE_MAX):
@@ -182,12 +182,21 @@ def main_simulation(A,SIM_TIME,name_motif,NOISE_MAX):
     target = 900
     # Create a boolean array where True means value equals target
     is_target = counts >= target
-    # Find where the value changes (by checking the difference)
-    diff = np.diff(is_target.astype(int))
-    # Count where a new group starts: when diff == 1
-    starts = np.where(diff == 1)[0]
-    # If the first element is the target, count it as a group start
-    num_lines = len(starts) + (is_target[0] == True)
+
+    # # Find where the value changes (by checking the difference)
+    # diff = np.diff(is_target.astype(int))
+    # # Count where a new group starts: when diff == 1
+    # starts = np.where(diff == 1)[0]
+    # # If the first element is the target, count it as a group start
+    # num_lines = len(starts) + (is_target[0] == True)
+
+    # Find contiguous groups of True values and count them
+    # We pad with a False at both ends to detect edges
+    padded = np.pad(is_target, (1, 1), constant_values=False)
+    transitions = np.diff(padded.astype(int))
+    # A new group starts at 0->1 transition
+    num_lines = np.sum(transitions == 1)
+
     # print(f"Number of syncronize activity: {num_lines}")
     # plt.figure(figsize=(10, 6))
     # plt.scatter(firings_np[:, 0], firings_np[:, 1], s=7, c='black', marker='.')
@@ -240,17 +249,12 @@ def simulation_all_motifs(all_motifs,all_motifs_names,firstA,NOISE_MAX):
         # print("before",nlinks_after_motifs)
         # Find all positions where value is 2
         positions = np.argwhere(newA == 2)
-        # Convert to list of tuples for easy removal
-        positions_list = [tuple(pos) for pos in positions]
         # Randomly choose one position
         num_to_change = nlinks - nlinks_after_motifs
-        # Shuffle once
-        np.random.shuffle(positions_list)
-        # Select positions to change
-        chosen_positions = positions_list[:num_to_change]
-        # Update matrix
-        for pos in chosen_positions:
-            newA[pos] = 1
+        # Shuffle positions in place
+        np.random.shuffle(positions)
+        # Select the first `num_to_change` and set them to 1
+        newA[tuple(positions[:num_to_change].T)] = 1
         newA[newA==2] = 0
         # print("after",np.count_nonzero(newA == 1))
         num_lines_each_motif[m] = main_simulation(newA,SIM_TIME,name_motif,NOISE_MAX)
@@ -266,22 +270,31 @@ def heatmap_noise_variation(all_motifs,all_motifs_names,firstA,min_noise,max_noi
         num_lines_all[:,n] = simulation_all_motifs(all_motifs,all_motifs_names,firstA,noise_values[n])
     plt.figure(figsize=(10, 2))
     plt.imshow(num_lines_all, cmap='viridis', aspect='auto')
-    plt.xticks(ticks=np.arange(num_lines_all.shape[1]), labels=noise_values)
+    plt.xticks(ticks=np.arange(d_noise), labels=[f"{nv:.2f}" for nv in noise_values])
     plt.yticks(ticks=np.arange(num_lines_all.shape[0]), labels=all_motifs_names)
+    # Add text annotations
+    max_val = num_lines_all.max()
     for i in range(num_lines_all.shape[0]):
         for j in range(num_lines_all.shape[1]):
-            plt.text(j, i, f"{num_lines_all[i, j]:.1f}", ha='center', va='center', color='white' if num_lines_all[i, j] > num_lines_all.max()/2 else 'black')
+            val = num_lines_all[i, j]
+            plt.text(j, i, f"{val:.1f}", ha='center', va='center',
+                    color='white' if val > max_val / 2 else 'black')
     plt.colorbar(label='# lines')
     plt.title('Num.lines for values of noise')
     plt.xlabel('NOISE_MAX')
     plt.tight_layout()
     plt.savefig("Motif_figures/heatmap_lines.png")
-    plt.close('all')
+    plt.close()
 
-# motifs3 = [motif_3c, motif_4a]
-# motifs3_names = ["motif_3c", "motif_4a"]
+# motifs3 = [A,motif_3c, motif_4a]
+# motifs3_names = ["random","motif_3c", "motif_4a"]
 # heatmap_noise_variation(motifs3,motifs3_names,firstA,2.9,3)
-heatmap_noise_variation(all_motifs,all_motifs_names,firstA,2.9,3)
+all_motifs_v2 = [motif_3a, motif_3b, motif_3c, motif_3d,
+              motif_5a, motif_5b, motif_5c, motif_5d, motif_5e, A]
+all_motifs_names_v2 = [
+    "motif_3a", "motif_3b", "motif_3c", "motif_3d",
+    "motif_5a", "motif_5b", "motif_5c", "motif_5d", "motif_5e", "random"]
+heatmap_noise_variation(all_motifs_v2,all_motifs_names_v2,firstA,2.9,3)
 
 ### combinations of multiple motifs
 # list of motifs and the corresponding percent (total sum must be 1 or less)
