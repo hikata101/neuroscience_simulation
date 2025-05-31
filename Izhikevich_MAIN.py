@@ -268,33 +268,66 @@ def heatmap_noise_variation(all_motifs,all_motifs_names,firstA,min_noise,max_noi
     for n in np.arange(noise_values.shape[0]):
         print("noise_value=",noise_values[n])
         num_lines_all[:,n] = simulation_all_motifs(all_motifs,all_motifs_names,firstA,noise_values[n])
-    plt.figure(figsize=(10, 2))
-    plt.imshow(num_lines_all, cmap='viridis', aspect='auto')
-    plt.xticks(ticks=np.arange(d_noise), labels=[f"{nv:.2f}" for nv in noise_values])
-    plt.yticks(ticks=np.arange(num_lines_all.shape[0]), labels=all_motifs_names)
-    # Add text annotations
-    max_val = num_lines_all.max()
-    for i in range(num_lines_all.shape[0]):
-        for j in range(num_lines_all.shape[1]):
-            val = num_lines_all[i, j]
-            plt.text(j, i, f"{val:.1f}", ha='center', va='center',
-                    color='white' if val > max_val / 2 else 'black')
-    plt.colorbar(label='# lines')
-    plt.title('Num.lines for values of noise')
-    plt.xlabel('NOISE_MAX')
-    plt.tight_layout()
-    plt.savefig("Motif_figures/heatmap_lines.png")
-    plt.close()
+    print("num_lines_all=",num_lines_all)
+    
+    groups = {}
+    random_index = None
+    for i, name in enumerate(all_motifs_names):
+        if name == "random":
+            random_index = i
+        elif name.startswith("motif_"):
+            # Extract the number immediately after "motif_"
+            num = ""
+            for ch in name[6:]:
+                if ch.isdigit():
+                    num += ch
+                else:
+                    break
+            if num:
+                groups.setdefault(num, []).append(i)
+
+    # For each group (motif number), create a heatmap that also includes the random motif.
+    for num, indices in groups.items():
+        # Include random motif if it exists.
+        if random_index is not None and random_index not in indices:
+            group_indices = indices + [random_index]
+        else:
+            group_indices = indices
+
+        # Extract the corresponding subset from num_lines_all and names.
+        group_data = num_lines_all[group_indices, :]
+        group_names = [all_motifs_names[i] for i in group_indices]
+
+        plt.figure(figsize=(10, 5))
+        plt.imshow(group_data, cmap='viridis', aspect='auto')
+        plt.xticks(ticks=np.arange(d_noise), labels=[f"{nv:.2f}" for nv in noise_values])
+        plt.yticks(ticks=np.arange(group_data.shape[0]), labels=group_names)
+        # Add text annotations for each cell.
+        max_val = group_data.max()
+        for i in range(group_data.shape[0]):
+            for j in range(group_data.shape[1]):
+                val = group_data[i, j]
+                plt.text(j, i, f"{val:.1f}", ha='center', va='center',
+                         color='white' if val > max_val / 2 else 'black')
+        plt.colorbar(label='# lines')
+        plt.title(f'Heatmap of # lines for motifs with number {num} (including random)')
+        plt.xlabel('NOISE_MAX')
+        plt.tight_layout()
+        plt.savefig(f"Motif_figures/heatmap_lines_motif{num}.png")
+        plt.close()
 
 # motifs3 = [A,motif_3c, motif_4a]
 # motifs3_names = ["random","motif_3c", "motif_4a"]
 # heatmap_noise_variation(motifs3,motifs3_names,firstA,2.9,3)
 all_motifs_v2 = [motif_3a, motif_3b, motif_3c, motif_3d,
+              motif_4a, motif_4b, motif_4c, motif_4d, motif_4e, motif_4f,
               motif_5a, motif_5b, motif_5c, motif_5d, motif_5e, A]
 all_motifs_names_v2 = [
     "motif_3a", "motif_3b", "motif_3c", "motif_3d",
+    "motif_4a", "motif_4b", "motif_4c", "motif_4d", "motif_4e", "motif_4f",
     "motif_5a", "motif_5b", "motif_5c", "motif_5d", "motif_5e", "random"]
-heatmap_noise_variation(all_motifs_v2,all_motifs_names_v2,firstA,2.9,3)
+d_noise = 20 # Number of noise steps
+heatmap_noise_variation(all_motifs_v2,all_motifs_names_v2,firstA,2.9,3, d_noise=d_noise)
 
 ### combinations of multiple motifs
 # list of motifs and the corresponding percent (total sum must be 1 or less)

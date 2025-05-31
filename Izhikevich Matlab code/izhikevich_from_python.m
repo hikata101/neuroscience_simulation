@@ -6,8 +6,8 @@
 clear; clc; close all;
 
 % 1- NETWORK SIZE:
-Ne=800; Ni=200; % Excitatory, inhibitory. Ne+Ni is total neurons.
-SIM_TIME=3000;
+Ne=900; Ni=100; % Excitatory, inhibitory. Ne+Ni is total neurons.
+SIM_TIME=5000;
 
 % 2 - GLOBAL PARAMETERS THAT SET OUR NEURON MODEL. DEFAULT IS SPIKING
 % NEURON:
@@ -43,7 +43,7 @@ W     = [W_exc , W_inh];
 S = A .* W;
 
 %% 6 ── NOISE LEVEL
-NOISE_MAX = 3;
+NOISE_MAX = 2.8;
 
 %% ──────────────────────────────────────────────────────────────
 %  MAIN SIMULATION ROUTINES
@@ -129,11 +129,11 @@ function main_simulation(A, SIM_TIME, name_motif)
     end
 
     % --- visualise connectivity -------------------------------
-    figure('Name',['Connectivity ' name_motif],'Color','w');
-    imagesc(A); colormap(gray); axis equal tight;
-    xlabel('Neuron'); ylabel('Neuron');
-    title(['Connectivity matrix : ' strrep(name_motif,'_','\_')]);
-    drawnow;
+    % figure('Name',['Connectivity ' name_motif],'Color','w');
+    % imagesc(A); colormap(gray); axis equal tight;
+    % xlabel('Neuron'); ylabel('Neuron');
+    % title(['Connectivity matrix : ' strrep(name_motif,'_','\_')]);
+    % drawnow;
 
     % --- initialise state variables ---------------------------
     v        = -65 * ones(Ne+Ni,1);
