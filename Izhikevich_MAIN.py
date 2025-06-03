@@ -4,6 +4,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import numpy as np
+from concurrent.futures import ProcessPoolExecutor
+import matplotlib.colors as colors
 np.random.seed(2025)
 
 # neuron i send connection to j
@@ -230,7 +232,7 @@ def simulation_all_motifs(all_motifs,all_motifs_names,firstA,NOISE_MAX):
     for m in range(len(all_motifs)):
         motif = all_motifs[m]
         name_motif  = all_motifs_names[m]
-        print(name_motif)
+        # print(name_motif)
         newA = np.ones(firstA.shape)*2
         np.fill_diagonal(newA, 0)
         nlinks = np.count_nonzero(firstA == 1)
@@ -261,14 +263,22 @@ def simulation_all_motifs(all_motifs,all_motifs_names,firstA,NOISE_MAX):
     return num_lines_each_motif
 # simulation_all_motifs(all_motifs,all_motifs_names,firstA)
 
+def simulate_for_noise(noise):
+        print("noise_value=", noise)
+        return simulation_all_motifs(all_motifs, all_motifs_names, firstA, noise)
+
 def heatmap_noise_variation(all_motifs,all_motifs_names,firstA,min_noise,max_noise,d_noise = 5):
     """Function that does the heatmap"""
     noise_values = np.linspace(min_noise, max_noise, d_noise)
     num_lines_all = np.zeros((len(all_motifs),d_noise))
-    for n in np.arange(noise_values.shape[0]):
-        print("noise_value=",noise_values[n])
-        num_lines_all[:,n] = simulation_all_motifs(all_motifs,all_motifs_names,firstA,noise_values[n])
-    print("num_lines_all=",num_lines_all)
+
+    with ProcessPoolExecutor() as executor:
+        results = list(executor.map(simulate_for_noise, noise_values))
+
+    for n, result in enumerate(results):
+        num_lines_all[:, n] = result
+
+    # print("num_lines_all=", num_lines_all)
     
     groups = {}
     random_index = None
@@ -300,7 +310,11 @@ def heatmap_noise_variation(all_motifs,all_motifs_names,firstA,min_noise,max_noi
 
         plt.figure(figsize=(10, 5))
         plt.imshow(group_data, cmap='viridis', aspect='auto')
-        plt.xticks(ticks=np.arange(d_noise), labels=[f"{nv:.2f}" for nv in noise_values])
+        # Set x-ticks at 5 evenly spaced positions displaying corresponding noise levels
+        xtick_positions = np.linspace(0, d_noise - 1, num=5, dtype=int)
+        xtick_labels = [f"{nv:.2f}" for nv in np.linspace(min_noise, max_noise, num=5)]
+        plt.xticks(ticks=xtick_positions, labels=xtick_labels)
+        plt.xlabel(f"Noise Level (min: {min_noise:.2f}, max: {max_noise:.2f})")
         plt.yticks(ticks=np.arange(group_data.shape[0]), labels=group_names)
         # Add text annotations for each cell.
         max_val = group_data.max()
@@ -310,11 +324,31 @@ def heatmap_noise_variation(all_motifs,all_motifs_names,firstA,min_noise,max_noi
                 plt.text(j, i, f"{val:.1f}", ha='center', va='center',
                          color='white' if val > max_val / 2 else 'black')
         plt.colorbar(label='# lines')
-        plt.title(f'Heatmap of # lines for motifs with number {num} (including random)')
+        plt.title(f'Heatmap of # lines for motifs with number {num}')
         plt.xlabel('NOISE_MAX')
         plt.tight_layout()
         plt.savefig(f"Motif_figures/heatmap_lines_motif{num}.png")
         plt.close()
+        
+    # ---- Aggregated heatmap for all motifs ----
+    plt.figure(figsize=(12, 8))
+    # plt.imshow(num_lines_all, cmap='viridis', aspect='auto')
+    unique_vals = np.unique(num_lines_all)
+    cmap = plt.get_cmap('tab10', len(unique_vals))
+    norm = colors.BoundaryNorm(np.arange(unique_vals.min(), unique_vals.max() + 2), cmap.N)
+    plt.imshow(num_lines_all, cmap=cmap, norm=norm, aspect='auto')
+    xtick_positions = np.linspace(0, d_noise - 1, num=5, dtype=int)
+    xtick_labels = [f"{nv:.2f}" for nv in np.linspace(min_noise, max_noise, num=5)]
+    plt.xticks(ticks=xtick_positions, labels=xtick_labels)
+    plt.yticks(ticks=np.arange(len(all_motifs_names)), labels=all_motifs_names)
+    plt.xlabel("NOISE_MAX")
+    plt.ylabel("Motifs")
+    plt.title("Aggregated Heatmap of # lines for All Motifs")
+    plt.colorbar(label="# lines")
+    plt.tight_layout()
+    plt.savefig("Motif_figures/heatmap_lines_all.png")
+    plt.close()
+    print("done!")
 
 # motifs3 = [A,motif_3c, motif_4a]
 # motifs3_names = ["random","motif_3c", "motif_4a"]
@@ -326,8 +360,10 @@ all_motifs_names_v2 = [
     "motif_3a", "motif_3b", "motif_3c", "motif_3d",
     "motif_4a", "motif_4b", "motif_4c", "motif_4d", "motif_4e", "motif_4f",
     "motif_5a", "motif_5b", "motif_5c", "motif_5d", "motif_5e", "random"]
-d_noise = 20 # Number of noise steps
-heatmap_noise_variation(all_motifs_v2,all_motifs_names_v2,firstA,2.9,3, d_noise=d_noise)
+d_noise = 60 # Number of noise steps
+
+if __name__ == "__main__":
+    heatmap_noise_variation(all_motifs_v2,all_motifs_names_v2,firstA,2.85,3, d_noise=d_noise)
 
 ### combinations of multiple motifs
 # list of motifs and the corresponding percent (total sum must be 1 or less)
