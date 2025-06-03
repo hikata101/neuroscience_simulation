@@ -1,10 +1,10 @@
 # Created by Eugene M. Izhikevich, February 25, 2003
 # Excitatory neurons and Inhibitory neurons
-
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import numpy as np
-np.random.seed(2025)
+# np.random.seed(2026)
 
 # neuron i send connection to j
 #matrix 3
@@ -227,20 +227,19 @@ def main_simulation(A,SIM_TIME,name_motif,NOISE_MAX):
 def simulation_all_motifs(all_motifs,all_motifs_names,firstA,NOISE_MAX):
     """Function that runs simulations of all motifs"""
     num_lines_each_motif = np.zeros(len(all_motifs))
-    for m in range(len(all_motifs)):
-        motif = all_motifs[m]
+    Nt = Ne + Ni
+    neurons = np.arange(Nt)
+    for m, motif in enumerate(all_motifs):
         name_motif  = all_motifs_names[m]
         print(name_motif)
         newA = np.ones(firstA.shape)*2
         np.fill_diagonal(newA, 0)
         nlinks = np.count_nonzero(firstA == 1)
-        Nt = Ne + Ni
-        neurons = np.arange(Nt)
-        # Shuffle the list of neurons for random selection without removing
-        np.random.shuffle(neurons)
         # Calculate max_steps based on the motif size
         motif_size = motif.shape[0]
         max_steps = Nt // motif_size
+        # Shuffle the list of neurons for random selection without removing
+        np.random.shuffle(neurons)
         for step in range(max_steps):
             selected = neurons[step * motif_size : (step + 1) * motif_size]
             # Assign motif block to submatrix of new_A
@@ -261,6 +260,18 @@ def simulation_all_motifs(all_motifs,all_motifs_names,firstA,NOISE_MAX):
     return num_lines_each_motif
 # simulation_all_motifs(all_motifs,all_motifs_names,firstA)
 
+def process_file_heatmap(data):
+    # Get the output path
+    output_path = os.path.join(os.path.dirname(__file__), "heatmap_data.txt")
+    # Open the file for writing
+    with open(output_path, 'w') as file:
+        # Write each row
+        for row in data:
+            # Convert each element in the row to string and join with tabs
+            row_values = "\t".join(map(str, row))
+            # Write the row to the file with a newline
+            file.write(row_values + "\n")
+
 def heatmap_noise_variation(all_motifs,all_motifs_names,firstA,min_noise,max_noise,d_noise = 5):
     """Function that does the heatmap"""
     noise_values = np.linspace(min_noise, max_noise, d_noise)
@@ -268,8 +279,9 @@ def heatmap_noise_variation(all_motifs,all_motifs_names,firstA,min_noise,max_noi
     for n in np.arange(noise_values.shape[0]):
         print("noise_value=",noise_values[n])
         num_lines_all[:,n] = simulation_all_motifs(all_motifs,all_motifs_names,firstA,noise_values[n])
+    process_file_heatmap(num_lines_all)
     plt.figure(figsize=(10, 2))
-    plt.imshow(num_lines_all, cmap='viridis', aspect='auto')
+    plt.imshow(num_lines_all, cmap='tab10', aspect='auto')
     plt.xticks(ticks=np.arange(d_noise), labels=[f"{nv:.2f}" for nv in noise_values])
     plt.yticks(ticks=np.arange(num_lines_all.shape[0]), labels=all_motifs_names)
     # Add text annotations
@@ -286,15 +298,48 @@ def heatmap_noise_variation(all_motifs,all_motifs_names,firstA,min_noise,max_noi
     plt.savefig("Motif_figures/heatmap_lines.png")
     plt.close()
 
+def create_random_A():
+    frac_delete = 0.8  # Fraction of connections to delete (set to 0)
+    # Create a random (Ne+Ni) x (Ne+Ni) connectivity matrix
+    A = np.random.rand(Ne + Ni, Ne + Ni)
+    # Set a fraction of connections to 0
+    A[A < frac_delete] = 0
+    A[A > 0] = 2
+    # Remove self-connections by zeroing the diagonal
+    np.fill_diagonal(A, 0)
+    nlinks = np.count_nonzero(firstA == 1)
+    nlinks_after_motifs = np.count_nonzero(A == 2)
+    # print("before",nlinks_after_motifs)
+    # Randomly choose one position
+    num_to_change = nlinks - nlinks_after_motifs
+    if num_to_change > 0:
+        # need more links
+        # Find all positions where value is 0
+        positions = np.argwhere(A == 0)
+        # Shuffle positions in place
+        np.random.shuffle(positions)
+        # Select the first `num_to_change` and set them to 1
+        A[tuple(positions[:num_to_change].T)] = 1
+    else:
+        #need less links
+        # Find all positions where value is 0
+        positions = np.argwhere(A == 2)
+        # Shuffle positions in place
+        np.random.shuffle(positions)
+        # Select the first `num_to_change` and set them to 0
+        A[tuple(positions[:abs(num_to_change)].T)] = 0
+    A[A==2] = 1
+    return A
+
 # motifs3 = [A,motif_3c, motif_4a]
 # motifs3_names = ["random","motif_3c", "motif_4a"]
 # heatmap_noise_variation(motifs3,motifs3_names,firstA,2.9,3)
-all_motifs_v2 = [motif_3a, motif_3b, motif_3c, motif_3d,
-              motif_5a, motif_5b, motif_5c, motif_5d, motif_5e, A]
-all_motifs_names_v2 = [
-    "motif_3a", "motif_3b", "motif_3c", "motif_3d",
-    "motif_5a", "motif_5b", "motif_5c", "motif_5d", "motif_5e", "random"]
-heatmap_noise_variation(all_motifs_v2,all_motifs_names_v2,firstA,2.9,3)
+all_motifs_v2 = [motif_3a, motif_3b, motif_3c, motif_3d, A]
+all_motifs_names_v2 = ["motif_3a", "motif_3b", "motif_3c", "motif_3d","random"]
+# all_motifs_v2 = [motif_3a, motif_3a, motif_3a, A, create_random_A(), create_random_A()]
+# all_motifs_names_v2 = [
+#     "motif_3a1", "motif_3a2", "motif_3a3","random1", "random2", "random3"]
+heatmap_noise_variation(all_motifs_v2,all_motifs_names_v2,firstA,2.85,3,d_noise=10)
 
 ### combinations of multiple motifs
 # list of motifs and the corresponding percent (total sum must be 1 or less)
