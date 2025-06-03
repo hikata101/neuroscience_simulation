@@ -333,13 +333,76 @@ def create_random_A():
 
 # motifs3 = [A,motif_3c, motif_4a]
 # motifs3_names = ["random","motif_3c", "motif_4a"]
-# heatmap_noise_variation(motifs3,motifs3_names,firstA,2.9,3)
-all_motifs_v2 = [motif_3a, motif_3b, motif_3c, motif_3d, A]
-all_motifs_names_v2 = ["motif_3a", "motif_3b", "motif_3c", "motif_3d","random"]
-# all_motifs_v2 = [motif_3a, motif_3a, motif_3a, A, create_random_A(), create_random_A()]
-# all_motifs_names_v2 = [
-#     "motif_3a1", "motif_3a2", "motif_3a3","random1", "random2", "random3"]
-heatmap_noise_variation(all_motifs_v2,all_motifs_names_v2,firstA,2.85,3,d_noise=10)
+# heatmap_noise_variation(all_motifs,all_motifs_names,firstA,2.85,3,d_noise=60)
+# all_motifs_v2 = [motif_3a, motif_3b, motif_3c, motif_3d, A]
+# all_motifs_names_v2 = ["motif_3a", "motif_3b", "motif_3c", "motif_3d","random"]
+# # all_motifs_v2 = [motif_3a, motif_3a, motif_3a, A, create_random_A(), create_random_A()]
+# # all_motifs_names_v2 = [
+# #     "motif_3a1", "motif_3a2", "motif_3a3","random1", "random2", "random3"]
+# heatmap_noise_variation(all_motifs_v2,all_motifs_names_v2,firstA,2.85,3,d_noise=5)
+
+
+from scipy.stats import pearsonr
+from scipy.signal import correlate
+from scipy.stats import zscore
+
+def read_heatmap_data(txt_file):
+    # Get the file path
+    file_path = os.path.join(os.path.dirname(__file__), txt_file)
+    
+    # Load the tab-separated file into a NumPy array
+    data = np.loadtxt(file_path, delimiter="\t")
+    return data
+
+# Input data
+# data = read_heatmap_data("heatmap_data_exemple.txt")
+data = read_heatmap_data("heatmap_data.txt")
+# print(data)
+# Separate reference row
+reference = zscore(data[-1])
+other_rows = data[:-1]
+# Compute max cross-correlation with reference
+scores = []
+for i, row in enumerate(other_rows):
+    row_z = zscore(row)
+    corr = correlate(row_z, reference, mode='full')
+    max_corr = np.max(corr) / len(row)
+    scores.append((i, max_corr))
+print(scores)
+# Sort indices by correlation score (descending)
+sorted_indices = [i for i, _ in sorted(scores, key=lambda x: -x[1])]
+# Reorder rows and append reference at the end
+reordered_data = np.vstack([data[-1], other_rows[sorted_indices]])
+# Show result
+# print("Reordered data (rows sorted by similarity to last row):")
+# print(reordered_data)
+# Optional: show mapping from new index to original
+# new_to_old = sorted_indices + [len(data) - 1]
+new_to_old = [len(data) - 1] + sorted_indices
+print("New to old row indices:", new_to_old)
+# new_names_order = [all_motifs_names_v2[i] for i in new_to_old]
+new_names_order = [all_motifs_names[i] for i in new_to_old]
+print(new_names_order)
+
+# Use the last row as the reference
+# ref_row = data[-1]
+# n_rows = data.shape[0]
+# # Compute Pearson correlation to the reference row
+# similarities = np.array([pearsonr(data[i], ref_row)[0] for i in range(n_rows)])
+# print(similarities)
+# # Sort indices by similarity (descending)
+# sorted_indices = np.argsort(similarities)[::-1]
+# # Get sorted data
+# sorted_data = data[sorted_indices]
+# # Map new -> old and old -> new positions
+# new_to_old = sorted_indices
+# old_to_new = np.argsort(sorted_indices)
+# # Display result
+# np.set_printoptions(precision=2, suppress=True)
+# # print("Sorted data:")
+# print(sorted_data)
+# print("New to old indices:", new_to_old)
+# print("Old to new indices:", old_to_new)
 
 ### combinations of multiple motifs
 # list of motifs and the corresponding percent (total sum must be 1 or less)
