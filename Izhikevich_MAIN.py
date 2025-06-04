@@ -280,7 +280,7 @@ def heatmap_noise_variation(all_motifs,all_motifs_names,firstA,min_noise,max_noi
         print("noise_value=",noise_values[n])
         num_lines_all[:,n] = simulation_all_motifs(all_motifs,all_motifs_names,firstA,noise_values[n])
     process_file_heatmap(num_lines_all)
-    plt.figure(figsize=(10, 2))
+    plt.figure()
     plt.imshow(num_lines_all, cmap='tab10', aspect='auto')
     plt.xticks(ticks=np.arange(d_noise), labels=[f"{nv:.2f}" for nv in noise_values])
     plt.yticks(ticks=np.arange(num_lines_all.shape[0]), labels=all_motifs_names)
@@ -379,10 +379,30 @@ reordered_data = np.vstack([data[-1], other_rows[sorted_indices]])
 # Optional: show mapping from new index to original
 # new_to_old = sorted_indices + [len(data) - 1]
 new_to_old = [len(data) - 1] + sorted_indices
-print("New to old row indices:", new_to_old)
+# print("New to old row indices:", new_to_old)
 # new_names_order = [all_motifs_names_v2[i] for i in new_to_old]
 new_names_order = [all_motifs_names[i] for i in new_to_old]
-print(new_names_order)
+# print(new_names_order)
+num_lines_all = reordered_data
+d_noise = 60
+noise_values = np.linspace(2.85, 3.0, d_noise)
+plt.figure()
+plt.imshow(num_lines_all, cmap='viridis', aspect='auto')
+plt.xticks(ticks=np.arange(d_noise), labels=[f"{nv:.2f}" for nv in noise_values])
+plt.yticks(ticks=np.arange(num_lines_all.shape[0]), labels=new_names_order)
+# Add text annotations
+# max_val = num_lines_all.max()
+# for i in range(num_lines_all.shape[0]):
+#     for j in range(num_lines_all.shape[1]):
+#         val = num_lines_all[i, j]
+#         plt.text(j, i, f"{val:.1f}", ha='center', va='center',
+#                 color='white' if val > max_val / 2 else 'black')
+plt.colorbar(label='# lines')
+plt.title('Num.lines for values of noise')
+plt.xlabel('NOISE_MAX')
+plt.tight_layout()
+plt.savefig("Motif_figures/heatmap_crosscorrelation.png")
+plt.close()  
 
 # Use the last row as the reference
 # ref_row = data[-1]
