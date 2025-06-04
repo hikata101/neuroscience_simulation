@@ -4,6 +4,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import numpy as np
+import os
+from functools import partial
 from concurrent.futures import ProcessPoolExecutor
 import matplotlib.colors as colors
 np.random.seed(2025)
@@ -84,7 +86,7 @@ motif_5e = np.array([[0, 0, 0, 0, 0],
 # 1 - NETWORK SIZE:
 Ne = 800  # Number of excitatory neurons
 Ni = 200  # Number of inhibitory neurons
-SIM_TIME = 3000  # Simulation time
+SIM_TIME = 5000  # Simulation time
 
 # 2 - GLOBAL PARAMETERS THAT SET OUR NEURON MODEL. DEFAULT IS SPIKING NEURON:
 # Set initial conditions of neurons, with some variability
@@ -137,7 +139,7 @@ all_motifs_names = [
 ]
 
 # MAIN SIMULATION
-def main_simulation(A,SIM_TIME,name_motif,NOISE_MAX):
+def main_simulation(A,SIM_TIME,name_motif,NOISE_MAX, path="Motif_figures"):
     """Function that runs the simulation with original A"""
     # Plot the connectivity matrix
     # plt.figure(figsize=(6, 6))
@@ -205,7 +207,8 @@ def main_simulation(A,SIM_TIME,name_motif,NOISE_MAX):
     # plt.xlabel('Time (ms)')
     # plt.ylabel('Neuron Index')
     # plt.title('Raster plot of activity')
-    # plt.savefig("Motif_figures/raster_plot_"+name_motif+".png")
+    # plt.savefig(os.path.join(path,"raster_plot_"+name_motif+".png"))
+    # print(os.path.join(path,"raster_plot_"+name_motif+".png"))
     # plt.close('all')
 
     # SYNC ANALYSIS
@@ -226,7 +229,7 @@ def main_simulation(A,SIM_TIME,name_motif,NOISE_MAX):
 
 # main_simulation(A,SIM_TIME,"original",NOISE_MAX)
 
-def simulation_all_motifs(all_motifs,all_motifs_names,firstA,NOISE_MAX):
+def simulation_all_motifs(all_motifs,all_motifs_names,firstA,NOISE_MAX, path="Motif_figures"):
     """Function that runs simulations of all motifs"""
     num_lines_each_motif = np.zeros(len(all_motifs))
     for m in range(len(all_motifs)):
@@ -259,21 +262,22 @@ def simulation_all_motifs(all_motifs,all_motifs_names,firstA,NOISE_MAX):
         newA[tuple(positions[:num_to_change].T)] = 1
         newA[newA==2] = 0
         # print("after",np.count_nonzero(newA == 1))
-        num_lines_each_motif[m] = main_simulation(newA,SIM_TIME,name_motif,NOISE_MAX)
+        num_lines_each_motif[m] = main_simulation(newA,SIM_TIME,name_motif,NOISE_MAX, path)
     return num_lines_each_motif
 # simulation_all_motifs(all_motifs,all_motifs_names,firstA)
 
-def simulate_for_noise(noise):
+def simulate_for_noise(noise, path):
         print("noise_value=", noise)
-        return simulation_all_motifs(all_motifs, all_motifs_names, firstA, noise)
+        return simulation_all_motifs(all_motifs, all_motifs_names, firstA, noise, path)
 
-def heatmap_noise_variation(all_motifs,all_motifs_names,firstA,min_noise,max_noise,d_noise = 5):
+def heatmap_noise_variation(all_motifs,all_motifs_names,firstA,min_noise,max_noise,d_noise = 5, path="Motif_figures"):
     """Function that does the heatmap"""
     noise_values = np.linspace(min_noise, max_noise, d_noise)
     num_lines_all = np.zeros((len(all_motifs),d_noise))
 
     with ProcessPoolExecutor() as executor:
-        results = list(executor.map(simulate_for_noise, noise_values))
+        func = partial(simulate_for_noise, path=path)
+        results = list(executor.map(func, noise_values))
 
     for n, result in enumerate(results):
         num_lines_all[:, n] = result
@@ -327,28 +331,67 @@ def heatmap_noise_variation(all_motifs,all_motifs_names,firstA,min_noise,max_noi
         plt.title(f'Heatmap of # lines for motifs with number {num}')
         plt.xlabel('NOISE_MAX')
         plt.tight_layout()
-        plt.savefig(f"Motif_figures/heatmap_lines_motif{num}.png")
+        plt.savefig(os.path.join(path, f"heatmap_lines_motif{num}.png"))
         plt.close()
         
     # ---- Aggregated heatmap for all motifs ----
     plt.figure(figsize=(12, 8))
-    # plt.imshow(num_lines_all, cmap='viridis', aspect='auto')
-    unique_vals = np.unique(num_lines_all)
-    cmap = plt.get_cmap('tab10', len(unique_vals))
-    norm = colors.BoundaryNorm(np.arange(unique_vals.min(), unique_vals.max() + 2), cmap.N)
-    plt.imshow(num_lines_all, cmap=cmap, norm=norm, aspect='auto')
+    # Compute cross-correlation with the "random" motif and sort motifs (except random) in descending order.
+    random_idx = all_motifs_names.index("random")
+    random_data = num_lines_all[random_idx, :]
+
+    # Get indices for motifs other than "random"
+    non_random_indices = [i for i in range(len(all_motifs_names)) if i != random_idx]
+
+    # Calculate correlation coefficients with random for each non-random motif
+    correlations = []
+    for i in non_random_indices:
+        corr = np.corrcoef(num_lines_all[i, :], random_data)[0, 1]
+        correlations.append((i, corr))
+
+    # Sort motifs by correlation in descending order and then append "random" at the end
+    sorted_indices = [i for i, _ in sorted(correlations, key=lambda x: x[1], reverse=True)]
+    sorted_indices.append(random_idx)
+
+    # Reorder the data and the motif names accordingly
+    sorted_data = num_lines_all[sorted_indices, :]
+    sorted_names = [all_motifs_names[i] for i in sorted_indices]
+
+    # Plot the aggregated heatmap with the sorted rows
+    plt.imshow(sorted_data, cmap='viridis', aspect='auto')
     xtick_positions = np.linspace(0, d_noise - 1, num=5, dtype=int)
     xtick_labels = [f"{nv:.2f}" for nv in np.linspace(min_noise, max_noise, num=5)]
     plt.xticks(ticks=xtick_positions, labels=xtick_labels)
-    plt.yticks(ticks=np.arange(len(all_motifs_names)), labels=all_motifs_names)
+    plt.yticks(ticks=np.arange(len(sorted_names)), labels=sorted_names)
     plt.xlabel("NOISE_MAX")
     plt.ylabel("Motifs")
     plt.title("Aggregated Heatmap of # lines for All Motifs")
     plt.colorbar(label="# lines")
     plt.tight_layout()
-    plt.savefig("Motif_figures/heatmap_lines_all.png")
+    plt.savefig(os.path.join(path, "heatmap_lines_all_cross.png"))
     plt.close()
     print("done!")
+    
+    # Reorder the data so that "random" is moved to the bottom while preserving the order of the other motifs.
+    random_index = all_motifs_names.index("random")
+    non_random_indices = [i for i in range(len(all_motifs_names)) if i != random_index]
+    ordered_indices = non_random_indices + [random_index]
+    ordered_data = num_lines_all[ordered_indices, :]
+    ordered_names = [all_motifs_names[i] for i in ordered_indices]
+
+    plt.figure(figsize=(12, 8))
+    plt.imshow(ordered_data, cmap='viridis', aspect='auto')
+    xtick_positions = np.linspace(0, d_noise - 1, num=5, dtype=int)
+    xtick_labels = [f"{nv:.2f}" for nv in np.linspace(min_noise, max_noise, num=5)]
+    plt.xticks(ticks=xtick_positions, labels=xtick_labels)
+    plt.yticks(ticks=np.arange(len(ordered_names)), labels=ordered_names)
+    plt.xlabel("NOISE_MAX")
+    plt.ylabel("Motifs")
+    plt.title("Aggregated Heatmap of # lines for All Motifs")
+    plt.colorbar(label="# lines")
+    plt.tight_layout()
+    plt.savefig(os.path.join(path, "heatmap_lines_all.png"))
+    plt.close()
 
 # motifs3 = [A,motif_3c, motif_4a]
 # motifs3_names = ["random","motif_3c", "motif_4a"]
@@ -363,7 +406,9 @@ all_motifs_names_v2 = [
 d_noise = 60 # Number of noise steps
 
 if __name__ == "__main__":
-    heatmap_noise_variation(all_motifs_v2,all_motifs_names_v2,firstA,2.85,3, d_noise=d_noise)
+    file_path = f'Motif_figures/sim_time_{SIM_TIME}/{Ne}/tmp'
+    os.makedirs(file_path, exist_ok=True)  # Create directory if it doesn't exist
+    heatmap_noise_variation(all_motifs_v2,all_motifs_names_v2,firstA,2.85,3, d_noise=d_noise, path=file_path)
 
 ### combinations of multiple motifs
 # list of motifs and the corresponding percent (total sum must be 1 or less)
