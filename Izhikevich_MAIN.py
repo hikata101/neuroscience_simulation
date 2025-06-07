@@ -4,7 +4,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import numpy as np
-# np.random.seed(2026)
+np.random.seed(2025)
 
 # neuron i send connection to j
 #matrix 3
@@ -198,13 +198,13 @@ def main_simulation(A,SIM_TIME,name_motif,NOISE_MAX):
     num_lines = np.sum(transitions == 1)
 
     # print(f"Number of syncronize activity: {num_lines}")
-    # plt.figure(figsize=(10, 6))
-    # plt.scatter(firings_np[:, 0], firings_np[:, 1], s=7, c='black', marker='.')
-    # plt.xlabel('Time (ms)')
-    # plt.ylabel('Neuron Index')
-    # plt.title('Raster plot of activity')
-    # plt.savefig("Motif_figures/raster_plot_"+name_motif+".png")
-    # plt.close('all')
+    plt.figure(figsize=(10, 6))
+    plt.scatter(firings_np[:, 0], firings_np[:, 1], s=7, c='black', marker='.')
+    plt.xlabel('Time (ms)')
+    plt.ylabel('Neuron Index')
+    plt.title('Raster plot of activity')
+    plt.savefig("Motif_figures/raster_plot_"+name_motif+".png")
+    plt.close('all')
 
     # SYNC ANALYSIS
     # SIM_TIME = 1000
@@ -258,7 +258,7 @@ def simulation_all_motifs(all_motifs,all_motifs_names,firstA,NOISE_MAX):
         # print("after",np.count_nonzero(newA == 1))
         num_lines_each_motif[m] = main_simulation(newA,SIM_TIME,name_motif,NOISE_MAX)
     return num_lines_each_motif
-# simulation_all_motifs(all_motifs,all_motifs_names,firstA)
+simulation_all_motifs(all_motifs,all_motifs_names,firstA,NOISE_MAX=2.905)
 
 def process_file_heatmap(data):
     # Get the output path
@@ -285,12 +285,12 @@ def heatmap_noise_variation(all_motifs,all_motifs_names,firstA,min_noise,max_noi
     plt.xticks(ticks=np.arange(d_noise), labels=[f"{nv:.2f}" for nv in noise_values])
     plt.yticks(ticks=np.arange(num_lines_all.shape[0]), labels=all_motifs_names)
     # Add text annotations
-    max_val = num_lines_all.max()
-    for i in range(num_lines_all.shape[0]):
-        for j in range(num_lines_all.shape[1]):
-            val = num_lines_all[i, j]
-            plt.text(j, i, f"{val:.1f}", ha='center', va='center',
-                    color='white' if val > max_val / 2 else 'black')
+    # max_val = num_lines_all.max()
+    # for i in range(num_lines_all.shape[0]):
+    #     for j in range(num_lines_all.shape[1]):
+    #         val = num_lines_all[i, j]
+    #         plt.text(j, i, f"{val:.1f}", ha='center', va='center',
+    #                 color='white' if val > max_val / 2 else 'black')
     plt.colorbar(label='# lines')
     plt.title('Num.lines for values of noise')
     plt.xlabel('NOISE_MAX')
@@ -301,45 +301,45 @@ def heatmap_noise_variation(all_motifs,all_motifs_names,firstA,min_noise,max_noi
 def create_random_A():
     frac_delete = 0.8  # Fraction of connections to delete (set to 0)
     # Create a random (Ne+Ni) x (Ne+Ni) connectivity matrix
-    A = np.random.rand(Ne + Ni, Ne + Ni)
+    newA = np.random.rand(Ne + Ni, Ne + Ni)
     # Set a fraction of connections to 0
-    A[A < frac_delete] = 0
-    A[A > 0] = 2
+    newA[newA < frac_delete] = 0
+    newA[newA > 0] = 2
     # Remove self-connections by zeroing the diagonal
-    np.fill_diagonal(A, 0)
+    np.fill_diagonal(newA, 0)
     nlinks = np.count_nonzero(firstA == 1)
-    nlinks_after_motifs = np.count_nonzero(A == 2)
+    nlinks_after_motifs = np.count_nonzero(newA == 2)
     # print("before",nlinks_after_motifs)
     # Randomly choose one position
     num_to_change = nlinks - nlinks_after_motifs
     if num_to_change > 0:
         # need more links
         # Find all positions where value is 0
-        positions = np.argwhere(A == 0)
+        positions = np.argwhere(newA == 0)
         # Shuffle positions in place
         np.random.shuffle(positions)
         # Select the first `num_to_change` and set them to 1
-        A[tuple(positions[:num_to_change].T)] = 1
+        newA[tuple(positions[:num_to_change].T)] = 1
     else:
         #need less links
         # Find all positions where value is 0
-        positions = np.argwhere(A == 2)
+        positions = np.argwhere(newA == 2)
         # Shuffle positions in place
         np.random.shuffle(positions)
         # Select the first `num_to_change` and set them to 0
-        A[tuple(positions[:abs(num_to_change)].T)] = 0
-    A[A==2] = 1
-    return A
+        newA[tuple(positions[:abs(num_to_change)].T)] = 0
+    newA[newA==2] = 1
+    print(np.count_nonzero(newA == 1))
+    return newA
 
 # motifs3 = [A,motif_3c, motif_4a]
 # motifs3_names = ["random","motif_3c", "motif_4a"]
 # heatmap_noise_variation(all_motifs,all_motifs_names,firstA,2.85,3,d_noise=60)
 # all_motifs_v2 = [motif_3a, motif_3b, motif_3c, motif_3d, A]
 # all_motifs_names_v2 = ["motif_3a", "motif_3b", "motif_3c", "motif_3d","random"]
-# # all_motifs_v2 = [motif_3a, motif_3a, motif_3a, A, create_random_A(), create_random_A()]
-# # all_motifs_names_v2 = [
-# #     "motif_3a1", "motif_3a2", "motif_3a3","random1", "random2", "random3"]
-# heatmap_noise_variation(all_motifs_v2,all_motifs_names_v2,firstA,2.85,3,d_noise=5)
+# all_motifs_v2 = [motif_3a, motif_3a, motif_3a, motif_3a, motif_3a, A, create_random_A(), create_random_A(), create_random_A(), create_random_A()]
+# all_motifs_names_v2 = ["motif_3a1", "motif_3a2", "motif_3a3","motif_3a4", "motif_3a5","random1", "random2", "random3","random4", "random5"]
+# heatmap_noise_variation(all_motifs_v2,all_motifs_names_v2,firstA,2.85,3,d_noise=10)
 
 
 from scipy.stats import pearsonr
@@ -356,73 +356,66 @@ def read_heatmap_data(txt_file):
 
 # Input data
 # data = read_heatmap_data("heatmap_data_exemple.txt")
-data = read_heatmap_data("heatmap_data.txt")
-# print(data)
-# Separate reference row
-reference = zscore(data[-1])
-other_rows = data[:-1]
-# Compute max cross-correlation with reference
-scores = []
-for i, row in enumerate(other_rows):
-    row_z = zscore(row)
-    corr = correlate(row_z, reference, mode='full')
-    max_corr = np.max(corr) / len(row)
-    scores.append((i, max_corr))
-print(scores)
-# Sort indices by correlation score (descending)
-sorted_indices = [i for i, _ in sorted(scores, key=lambda x: -x[1])]
-# Reorder rows and append reference at the end
-reordered_data = np.vstack([data[-1], other_rows[sorted_indices]])
-# Show result
-# print("Reordered data (rows sorted by similarity to last row):")
-# print(reordered_data)
-# Optional: show mapping from new index to original
-# new_to_old = sorted_indices + [len(data) - 1]
-new_to_old = [len(data) - 1] + sorted_indices
-# print("New to old row indices:", new_to_old)
-# new_names_order = [all_motifs_names_v2[i] for i in new_to_old]
-new_names_order = [all_motifs_names[i] for i in new_to_old]
-# print(new_names_order)
-num_lines_all = reordered_data
-d_noise = 60
-noise_values = np.linspace(2.85, 3.0, d_noise)
-plt.figure()
-plt.imshow(num_lines_all, cmap='viridis', aspect='auto')
-plt.xticks(ticks=np.arange(d_noise), labels=[f"{nv:.2f}" for nv in noise_values])
-plt.yticks(ticks=np.arange(num_lines_all.shape[0]), labels=new_names_order)
-# Add text annotations
-# max_val = num_lines_all.max()
-# for i in range(num_lines_all.shape[0]):
-#     for j in range(num_lines_all.shape[1]):
-#         val = num_lines_all[i, j]
-#         plt.text(j, i, f"{val:.1f}", ha='center', va='center',
-#                 color='white' if val > max_val / 2 else 'black')
-plt.colorbar(label='# lines')
-plt.title('Num.lines for values of noise')
-plt.xlabel('NOISE_MAX')
-plt.tight_layout()
-plt.savefig("Motif_figures/heatmap_crosscorrelation.png")
-plt.close()  
+# data = read_heatmap_data("heatmap_data_v1.txt")
+# list_heatmaps = ["heatmap_data_v2.txt","heatmap_data_v2.txt"]
+# for file in list_heatmaps:
+#     new_data = read_heatmap_data(file)
+#     data += new_data
+# new_data = read_heatmap_data("heatmap_data_itr10.txt")
+# # data += new_data*10
+# # data = data/(len(list_heatmaps)+1+10)
+# data = new_data[:,:] - new_data[-1,:]
+# # print(data)
+# # Separate reference row
+# reference = zscore(data[-1])
+# other_rows = data[:-1]
+# # Compute max cross-correlation with reference
+# scores = []
+# for i, row in enumerate(other_rows):
+#     row_z = zscore(row)
+#     corr = correlate(row_z, reference, mode='full')
+#     max_corr = np.max(corr) / len(row)
+#     scores.append((i, max_corr))
+# print(scores)
+# # Sort indices by correlation score (descending)
+# sorted_indices = [i for i, _ in sorted(scores, key=lambda x: -x[1])]
+# # Reorder rows and append reference at the end
+# reordered_data = np.vstack([data[-1], other_rows[sorted_indices]])
+# # Show result
+# # print("Reordered data (rows sorted by similarity to last row):")
+# # print(reordered_data)
+# # Optional: show mapping from new index to original
+# # new_to_old = sorted_indices + [len(data) - 1]
+# new_to_old = [len(data) - 1] + sorted_indices
+# # print("New to old row indices:", new_to_old)
+# # new_names_order = [all_motifs_names_v2[i] for i in new_to_old]
+# new_names_order = [all_motifs_names[i] for i in new_to_old]
+# # print(new_names_order)
+# num_lines_all = reordered_data
+# d_noise = 60
+# noise_values = np.linspace(2.85, 3.0, d_noise)
+# plt.figure()
+# plt.imshow(num_lines_all, cmap='seismic', aspect='auto')
+# step = 10
+# ticks_to_show = np.arange(0, len(noise_values), step)
+# labels_to_show = [f"{noise_values[i]:.2f}" for i in ticks_to_show]
+# plt.xticks(ticks=ticks_to_show, labels=labels_to_show)
+# # plt.xticks(ticks=np.arange(d_noise), labels=[f"{nv:.2f}" for nv in noise_values])
+# plt.yticks(ticks=np.arange(num_lines_all.shape[0]), labels=new_names_order)
+# # Add text annotations
+# # max_val = num_lines_all.max()
+# # for i in range(num_lines_all.shape[0]):
+# #     for j in range(num_lines_all.shape[1]):
+# #         val = num_lines_all[i, j]
+# #         plt.text(j, i, f"{val:.1f}", ha='center', va='center',
+# #                 color='white' if val > max_val / 2 else 'black')
+# plt.colorbar(label='# lines')
+# plt.title('Difference number of lines')
+# plt.xlabel('NOISE_MAX')
+# plt.tight_layout()
+# plt.savefig("Motif_figures/heatmap_crosscorrelation.png")
+# plt.close()  
 
-# Use the last row as the reference
-# ref_row = data[-1]
-# n_rows = data.shape[0]
-# # Compute Pearson correlation to the reference row
-# similarities = np.array([pearsonr(data[i], ref_row)[0] for i in range(n_rows)])
-# print(similarities)
-# # Sort indices by similarity (descending)
-# sorted_indices = np.argsort(similarities)[::-1]
-# # Get sorted data
-# sorted_data = data[sorted_indices]
-# # Map new -> old and old -> new positions
-# new_to_old = sorted_indices
-# old_to_new = np.argsort(sorted_indices)
-# # Display result
-# np.set_printoptions(precision=2, suppress=True)
-# # print("Sorted data:")
-# print(sorted_data)
-# print("New to old indices:", new_to_old)
-# print("Old to new indices:", old_to_new)
 
 ### combinations of multiple motifs
 # list of motifs and the corresponding percent (total sum must be 1 or less)
