@@ -236,7 +236,7 @@ def main_simulation(S,SIM_TIME,name_motif,NOISE_MAX, a,b,c,d, path="Motif_figure
     #     num_active[j - 1] = len(np.unique(neurons_fired)) / (Ne + Ni)
     # sync = np.max(num_active)
     # print("Synchronization measure (max fraction of active neurons per window):", sync)
-    return num_lines
+    return num_lines, firings_np
 
 # main_simulation(A,SIM_TIME,"original",NOISE_MAX)
 
