@@ -258,7 +258,7 @@ def simulation_all_motifs(all_motifs,all_motifs_names,firstA,NOISE_MAX):
         # print("after",np.count_nonzero(newA == 1))
         num_lines_each_motif[m] = main_simulation(newA,SIM_TIME,name_motif,NOISE_MAX)
     return num_lines_each_motif
-simulation_all_motifs(all_motifs,all_motifs_names,firstA,NOISE_MAX=2.905)
+# simulation_all_motifs(all_motifs,all_motifs_names,firstA,NOISE_MAX=2.905)
 
 def process_file_heatmap(data):
     # Get the output path
@@ -361,60 +361,62 @@ def read_heatmap_data(txt_file):
 # for file in list_heatmaps:
 #     new_data = read_heatmap_data(file)
 #     data += new_data
-# new_data = read_heatmap_data("heatmap_data_itr10.txt")
-# # data += new_data*10
-# # data = data/(len(list_heatmaps)+1+10)
-# data = new_data[:,:] - new_data[-1,:]
-# # print(data)
-# # Separate reference row
-# reference = zscore(data[-1])
-# other_rows = data[:-1]
-# # Compute max cross-correlation with reference
-# scores = []
-# for i, row in enumerate(other_rows):
-#     row_z = zscore(row)
-#     corr = correlate(row_z, reference, mode='full')
-#     max_corr = np.max(corr) / len(row)
-#     scores.append((i, max_corr))
-# print(scores)
-# # Sort indices by correlation score (descending)
-# sorted_indices = [i for i, _ in sorted(scores, key=lambda x: -x[1])]
-# # Reorder rows and append reference at the end
-# reordered_data = np.vstack([data[-1], other_rows[sorted_indices]])
-# # Show result
-# # print("Reordered data (rows sorted by similarity to last row):")
-# # print(reordered_data)
-# # Optional: show mapping from new index to original
-# # new_to_old = sorted_indices + [len(data) - 1]
-# new_to_old = [len(data) - 1] + sorted_indices
-# # print("New to old row indices:", new_to_old)
-# # new_names_order = [all_motifs_names_v2[i] for i in new_to_old]
-# new_names_order = [all_motifs_names[i] for i in new_to_old]
-# # print(new_names_order)
-# num_lines_all = reordered_data
-# d_noise = 60
-# noise_values = np.linspace(2.85, 3.0, d_noise)
-# plt.figure()
-# plt.imshow(num_lines_all, cmap='seismic', aspect='auto')
-# step = 10
-# ticks_to_show = np.arange(0, len(noise_values), step)
-# labels_to_show = [f"{noise_values[i]:.2f}" for i in ticks_to_show]
-# plt.xticks(ticks=ticks_to_show, labels=labels_to_show)
-# # plt.xticks(ticks=np.arange(d_noise), labels=[f"{nv:.2f}" for nv in noise_values])
-# plt.yticks(ticks=np.arange(num_lines_all.shape[0]), labels=new_names_order)
-# # Add text annotations
-# # max_val = num_lines_all.max()
-# # for i in range(num_lines_all.shape[0]):
-# #     for j in range(num_lines_all.shape[1]):
-# #         val = num_lines_all[i, j]
-# #         plt.text(j, i, f"{val:.1f}", ha='center', va='center',
-# #                 color='white' if val > max_val / 2 else 'black')
-# plt.colorbar(label='# lines')
-# plt.title('Difference number of lines')
-# plt.xlabel('NOISE_MAX')
-# plt.tight_layout()
-# plt.savefig("Motif_figures/heatmap_crosscorrelation.png")
-# plt.close()  
+new_data = read_heatmap_data("heatmap_data_itr10.txt")
+# data += new_data*10
+# data = data/(len(list_heatmaps)+1+10)
+data = new_data[:,:] - new_data[-1,:]
+# print(data)
+# Separate reference row
+reference = zscore(data[-1])
+other_rows = data[:-1]
+# Compute max cross-correlation with reference
+scores = []
+for i, row in enumerate(other_rows):
+    row_z = zscore(row)
+    corr = correlate(row_z, reference, mode='full')
+    max_corr = np.max(corr) / len(row)
+    scores.append((i, max_corr))
+print(scores)
+# Sort indices by correlation score (descending)
+sorted_indices = [i for i, _ in sorted(scores, key=lambda x: -x[1])]
+# Reorder rows and append reference at the end
+reordered_data = np.vstack([data[-1], other_rows[sorted_indices]])
+reordered_data = np.vstack([data[-1], other_rows])
+# Show result
+# print("Reordered data (rows sorted by similarity to last row):")
+# print(reordered_data)
+# Optional: show mapping from new index to original
+# new_to_old = sorted_indices + [len(data) - 1]
+new_to_old = [len(data) - 1] + sorted_indices
+# print("New to old row indices:", new_to_old)
+# new_names_order = [all_motifs_names_v2[i] for i in new_to_old]
+new_names_order = [all_motifs_names[i] for i in new_to_old]
+# print(new_names_order)
+num_lines_all = reordered_data
+d_noise = 60
+noise_values = np.linspace(2.85, 3.0, d_noise)
+plt.figure()
+plt.imshow(num_lines_all, cmap='seismic', aspect='auto')
+step = 10
+print(noise_values)
+ticks_to_show = np.arange(0, len(noise_values), step)
+labels_to_show = [f"{noise_values[i]:.2f}" for i in ticks_to_show]
+plt.xticks(ticks=ticks_to_show, labels=labels_to_show)
+# plt.xticks(ticks=np.arange(d_noise), labels=[f"{nv:.2f}" for nv in noise_values])
+plt.yticks(ticks=np.arange(num_lines_all.shape[0]), labels=new_names_order)
+# Add text annotations
+# max_val = num_lines_all.max()
+# for i in range(num_lines_all.shape[0]):
+#     for j in range(num_lines_all.shape[1]):
+#         val = num_lines_all[i, j]
+#         plt.text(j, i, f"{val:.1f}", ha='center', va='center',
+#                 color='white' if val > max_val / 2 else 'black')
+plt.colorbar(label='# lines')
+plt.title('Difference number of lines')
+plt.xlabel('NOISE_MAX')
+plt.tight_layout()
+plt.savefig("Motif_figures/heatmap_crosscorrelation.png")
+plt.close()  
 
 
 ### combinations of multiple motifs
